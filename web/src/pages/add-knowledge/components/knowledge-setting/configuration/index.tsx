@@ -24,6 +24,7 @@ import { QAConfiguration } from './qa';
 import { ResumeConfiguration } from './resume';
 import { TableConfiguration } from './table';
 import { TagConfiguration } from './tag';
+import { MinerUConfiguration } from './mineru';
 
 import styles from '../index.less';
 
@@ -43,6 +44,7 @@ const ConfigurationComponentMap = {
   [DocumentParserType.Email]: EmailConfiguration,
   [DocumentParserType.Tag]: TagConfiguration,
   [DocumentParserType.KnowledgeGraph]: KnowledgeGraphConfiguration,
+  [DocumentParserType.MinerU]: MinerUConfiguration,
 };
 
 function EmptyComponent() {

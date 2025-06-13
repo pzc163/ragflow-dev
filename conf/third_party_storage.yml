@@ -1,0 +1,98 @@
+# 第三方文件存储服务配置
+# Third-party File Storage Service Configuration
+
+# 基础配置
+base_url: "https://your-storage-api.example.com"  # 第三方存储API的基础URL
+api_key: "your-api-key-here"                      # API密钥
+timeout: 30                                       # 请求超时时间（秒）
+
+# 认证配置
+auth:
+  type: "bearer"              # 认证类型: bearer, basic, api_key
+  token: "your-token"         # Bearer token
+  username: ""                # 基础认证用户名
+  password: ""                # 基础认证密码
+  api_key_header: "X-API-Key" # API Key头部名称
+
+# 请求配置
+request:
+  max_retries: 3              # 最大重试次数
+  retry_delay: 1              # 重试延迟（秒）
+  chunk_size: 8192            # 上传/下载块大小
+  max_file_size: 134217728    # 最大文件大小（128MB）
+
+# API端点配置
+endpoints:
+  upload: "/api/v1/files/upload"           # 文件上传端点
+  download: "/api/v1/files/download"       # 文件下载端点
+  delete: "/api/v1/files/delete"           # 文件删除端点
+  exists: "/api/v1/files/exists"           # 文件存在检查端点
+  info: "/api/v1/files/info"               # 文件信息获取端点
+  presigned_url: "/api/v1/files/presigned-url"  # 预签名URL端点
+  list_objects: "/api/v1/objects/list"     # 对象列表端点
+  bucket_delete: "/api/v1/buckets/delete"  # 存储桶删除端点
+
+# 响应映射配置
+response_mapping:
+  success_codes: [200, 201, 204]          # 成功状态码
+  file_url_field: "file_url"              # 文件URL字段名
+  presigned_url_field: "presigned_url"    # 预签名URL字段名
+  objects_field: "objects"                # 对象列表字段名
+  error_message_field: "message"          # 错误信息字段名
+
+# 高级配置
+advanced:
+  enable_compression: true     # 启用压缩
+  enable_encryption: false     # 启用加密
+  enable_versioning: false     # 启用版本控制
+  enable_cache: true           # 启用缓存
+  cache_ttl: 3600             # 缓存TTL（秒）
+
+# 日志配置
+logging:
+  enable_debug: false          # 启用调试日志
+  log_requests: true           # 记录请求日志
+  log_responses: false         # 记录响应日志
+  max_log_size: 1024          # 最大日志大小（字节）
+
+# 监控配置
+monitoring:
+  enable_metrics: true         # 启用指标收集
+  health_check_interval: 60    # 健康检查间隔（秒）
+  performance_tracking: true   # 启用性能跟踪
+
+# 自定义头部
+custom_headers:
+  User-Agent: "RAGFlow/1.0"
+  # 添加其他自定义头部
+  # Custom-Header: "value"
+
+# 第三方存储服务提供商特定配置示例
+# 你可以根据具体的第三方服务调整这些配置
+
+# 示例1: 通用RESTful API
+# providers:
+#   generic:
+#     type: "rest_api"
+#     version: "v1"
+
+# 示例2: 阿里云OSS
+# providers:
+#   aliyun_oss:
+#     type: "oss"
+#     region: "oss-cn-hangzhou"
+#     bucket_suffix: ".oss-cn-hangzhou.aliyuncs.com"
+
+# 示例3: 腾讯云COS
+# providers:
+#   tencent_cos:
+#     type: "cos"
+#     region: "ap-beijing"
+#     bucket_suffix: ".cos.ap-beijing.myqcloud.com"
+
+# 示例4: 华为云OBS
+# providers:
+#   huawei_obs:
+#     type: "obs"
+#     region: "cn-north-4"
+#     bucket_suffix: ".obs.cn-north-4.myhuaweicloud.com"

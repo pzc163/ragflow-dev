@@ -23,6 +23,7 @@ RAGFlow isn't one-size-fits-all. It is built for flexibility and supports deeper
     - **Laws**
     - **Presentation**
     - **One**
+    - **MinerU**
 - To use a third-party visual model for parsing PDFs, ensure you have set a default img2txt model under **Set default models** on the **Model providers** page.
 
 ## Procedure
@@ -50,4 +51,3 @@ Use a visual model to extract data if your PDFs contain formatted or image-based
 ### Can I select a visual model to parse my DOCX files?
 
 No, you cannot. This dropdown menu is for PDFs only. To use this feature, convert your DOCX files to PDF first.
-

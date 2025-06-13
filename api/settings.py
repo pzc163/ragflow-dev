@@ -66,6 +66,11 @@ kg_retrievaler = None
 # user registration switch
 REGISTER_ENABLED = 1
 
+# MinerU 配置
+MINERU_ENDPOINT = os.environ.get("MINERU_ENDPOINT", "http://172.19.0.3:8081/file_parse")
+MINERU_TIMEOUT = int(os.environ.get("MINERU_TIMEOUT", "600"))
+MINERU_FALLBACK = os.environ.get("MINERU_FALLBACK", "true").lower() == "true"
+MINERU_PARSE_METHOD = os.environ.get("MINERU_PARSE_METHOD", "auto")
 
 # sandbox-executor-manager
 SANDBOX_ENABLED = 0
