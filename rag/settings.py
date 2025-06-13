@@ -33,7 +33,6 @@ MINIO = {}
 OSS = {}
 OS = {}
 THIRD_PARTY_STORAGE = {}
-IMAGE_PLATFORM_STORAGE = {}
 
 # Initialize the selected configuration data based on environment variables to solve the problem of initialization errors due to lack of configuration
 if DOC_ENGINE == "elasticsearch":
@@ -53,8 +52,6 @@ elif STORAGE_IMPL_TYPE == "OSS":
     OSS = get_base_config("oss", {})
 elif STORAGE_IMPL_TYPE == "THIRD_PARTY":
     THIRD_PARTY_STORAGE = get_base_config("third_party_storage", {})
-elif STORAGE_IMPL_TYPE == "IMAGE_PLATFORM":
-    IMAGE_PLATFORM_STORAGE = get_base_config("image_platform_storage", {})
 
 try:
     REDIS = decrypt_database_config(name="redis")

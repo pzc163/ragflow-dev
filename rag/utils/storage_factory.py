@@ -23,7 +23,6 @@ from rag.utils.minio_conn import RAGFlowMinio
 from rag.utils.s3_conn import RAGFlowS3
 from rag.utils.oss_conn import RAGFlowOSS
 from rag.utils.third_party_storage_conn import RAGFlowThirdPartyStorage
-from rag.utils.image_platform_storage_client import ImagePlatformStorageClient
 
 
 class Storage(Enum):
@@ -33,7 +32,6 @@ class Storage(Enum):
     AWS_S3 = 4
     OSS = 5
     THIRD_PARTY = 6
-    IMAGE_PLATFORM = 7
 
 
 class StorageFactory:
@@ -44,7 +42,6 @@ class StorageFactory:
         Storage.AWS_S3: RAGFlowS3,
         Storage.OSS: RAGFlowOSS,
         Storage.THIRD_PARTY: RAGFlowThirdPartyStorage,
-        Storage.IMAGE_PLATFORM: ImagePlatformStorageClient,
     }
 
     @classmethod
