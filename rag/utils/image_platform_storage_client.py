@@ -1,4 +1,3 @@
-import logging
 from typing import Optional, Any
 from .image_platform_storage_adapter import ImagePlatformStorageAdapter
 from api import settings
@@ -27,4 +26,4 @@ class ImagePlatformStorageClient:
 
     def get(self, file_id: str, save_path: str) -> bool:
         adapter = ImagePlatformStorageAdapter(self.base_url, self.app_id, self.app_key)
-        return adapter.download_file(file_id, save_path) 
+        return adapter.download_file(file_id, save_path)

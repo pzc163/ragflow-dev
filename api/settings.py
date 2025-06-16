@@ -80,9 +80,10 @@ BUILTIN_EMBEDDING_MODELS = ["BAAI/bge-large-zh-v1.5@BAAI", "maidalun1020/bce-emb
 
 IMAGE_PLATFORM_STORAGE = {
     "base_url": "http://10.12.2.194:8088",  # 影像平台API地址
-    "app_id": "你的AppID",                   # 你的系统标识
-    "app_key": "你的AppKey"                  # 你的密钥
+    "app_id": "你的AppID",  # 你的系统标识
+    "app_key": "你的AppKey",  # 你的密钥
 }
+
 
 def init_settings():
     global LLM, LLM_FACTORY, LLM_BASE_URL, LIGHTEN, DATABASE_TYPE, DATABASE, FACTORY_LLM_INFOS, REGISTER_ENABLED

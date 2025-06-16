@@ -22,13 +22,20 @@ MinerU 专用文档处理模块
 核心设计理念：
 1. PDF 文件 → MinerU API → Markdown 内容
 2. Markdown 内容 → 结构化解析 → 文本段落 + 表格
-3. 文本段落 + 表格 → RAGFlow chunking → 最终文档块
+3. 文本段落 + 表格 → 智能/标准分块 → 最终文档块
+
+新功能：
+- 支持智能分块策略（smart_chunking=True）
+- 保持 Markdown 结构完整性（标题、代码块、表格）
+- 智能语义感知分块，避免破坏上下文
+- 优雅降级到标准分块策略
 
 优势：
 - 专门针对 Markdown 格式优化
 - 充分利用 MinerU 的结构化输出
 - 避免 PDF 坐标系统的复杂性
 - 与 RAGFlow 生态完全兼容
+- 支持高级智能分块功能
 """
 
 import logging
@@ -112,15 +119,33 @@ def chunk(filename, binary=None, from_page=0, to_page=100000, lang="Chinese", ca
         if callback:
             callback(0.8, "表格处理完成，开始文本分块...")
 
-        # 4. 文本分块（使用与 naive.py 相同的逻辑）
+        # 4. 文本分块（支持智能分块策略）
         chunk_token_num = int(parser_config.get("chunk_token_num", 128))
         delimiter = parser_config.get("delimiter", "\n!?。；！？")
 
-        # 使用 naive_merge 进行分块
-        chunks = naive_merge(sections, chunk_token_num, delimiter)
+        # 检查是否启用智能分块
+        use_smart_chunking = parser_config.get("smart_chunking", False)
 
-        if callback:
-            callback(0.85, f"文本分块完成，生成 {len(chunks)} 个文本块")
+        if use_smart_chunking:
+            if callback:
+                callback(0.8, "使用智能分块策略处理 Markdown 内容...")
+
+            try:
+                chunks = _smart_chunk_markdown_sections(sections, parser_config, filename, callback)
+                if callback:
+                    callback(0.85, f"智能分块完成，生成 {len(chunks)} 个文本块")
+            except Exception as e:
+                logger.warning(f"智能分块失败，回退到标准分块: {e}")
+                if callback:
+                    callback(0.82, "智能分块失败，使用标准分块...")
+                chunks = naive_merge(sections, chunk_token_num, delimiter)
+                if callback:
+                    callback(0.85, f"标准分块完成，生成 {len(chunks)} 个文本块")
+        else:
+            # 使用 naive_merge 进行标准分块
+            chunks = naive_merge(sections, chunk_token_num, delimiter)
+            if callback:
+                callback(0.85, f"标准分块完成，生成 {len(chunks)} 个文本块")
 
         # 如果只需要段落，直接返回
         if kwargs.get("section_only", False):
@@ -161,6 +186,55 @@ def chunk(filename, binary=None, from_page=0, to_page=100000, lang="Chinese", ca
             raise
 
 
+def _smart_chunk_markdown_sections(sections: List, parser_config: Dict[str, Any], filename: str, callback=None) -> List[str]:
+    """
+    使用智能分块策略处理 Markdown 段落
+
+    将 MinerU 解析得到的 sections 重新组合为 Markdown 格式，
+    然后使用智能分块器进行处理
+    """
+    try:
+        from .smart_chunker import SmartMarkdownChunker
+
+        # 重新构建 Markdown 内容
+        # 因为 MinerU 输出的是段落列表，我们需要重新组合
+        markdown_content = ""
+        for section_text, _ in sections:
+            if isinstance(section_text, tuple):
+                section_text = section_text[0]
+            markdown_content += section_text + "\n\n"
+
+        # 创建智能分块器
+        smart_chunker = SmartMarkdownChunker(
+            max_tokens=int(parser_config.get("chunk_token_num", 128)),
+            delimiter=parser_config.get("delimiter", "\n!?。；！？"),
+            preserve_code_blocks=parser_config.get("preserve_code_blocks", True),
+            preserve_tables=parser_config.get("preserve_tables", True),
+            maintain_hierarchy=parser_config.get("maintain_hierarchy", True),
+            extract_images=parser_config.get("extract_images", False),  # MinerU 已经处理了图片
+        )
+
+        if callback:
+            callback(0.81, "执行智能语义分块...")
+
+        # 执行智能分块
+        chunk_results, table_results = smart_chunker.chunk_markdown(markdown_content, filename)
+
+        # 转换为与 naive_merge 兼容的格式
+        chunks = [chunk_result.content for chunk_result in chunk_results]
+
+        logger.info(f"智能分块结果: {len(chunks)} 个文本块, {len(table_results)} 个表格")
+
+        return chunks
+
+    except ImportError as e:
+        logger.error(f"无法导入智能分块器: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"智能分块处理失败: {e}")
+        raise
+
+
 def _get_mineru_config(parser_config: Dict[str, Any], **kwargs) -> Dict[str, Any]:
     """
     从配置中获取 MinerU 参数
@@ -168,48 +242,34 @@ def _get_mineru_config(parser_config: Dict[str, Any], **kwargs) -> Dict[str, Any
     """
     config = {
         # API 配置
-        "api_endpoint": (
-            kwargs.get("mineru_endpoint") or 
-            parser_config.get("mineru_endpoint") or 
-            getattr(settings, "MINERU_ENDPOINT", "http://172.19.0.3:8081/file_parse")
-        ),
-        "api_timeout": (
-            kwargs.get("mineru_timeout") or 
-            parser_config.get("mineru_timeout") or 
-            getattr(settings, "MINERU_TIMEOUT", 600)
-        ),
-        
+        "api_endpoint": (kwargs.get("mineru_endpoint") or parser_config.get("mineru_endpoint") or getattr(settings, "MINERU_ENDPOINT", "http://172.19.0.3:8081/file_parse")),
+        "api_timeout": (kwargs.get("mineru_timeout") or parser_config.get("mineru_timeout") or getattr(settings, "MINERU_TIMEOUT", 600)),
         # 解析配置
-        "parse_method": (
-            kwargs.get("parse_method") or 
-            parser_config.get("parse_method") or 
-            getattr(settings, "MINERU_PARSE_METHOD", "auto")
-        ),
-        
+        "parse_method": (kwargs.get("parse_method") or parser_config.get("parse_method") or getattr(settings, "MINERU_PARSE_METHOD", "auto")),
         # 回退机制配置
         "fallback_enabled": parser_config.get("mineru_fallback", True),
-        
         # 返回内容配置
         "return_layout": parser_config.get("return_layout", False),
         "return_info": parser_config.get("return_info", False),
         "return_content_list": parser_config.get("return_content_list", True),
         "return_images": parser_config.get("return_images", True),
-        
         # 图片处理配置
         "process_images": parser_config.get("process_images", True),
         "max_image_size": parser_config.get("max_image_size", (800, 800)),
-        
         # 调试配置
         "enable_debug": parser_config.get("enable_debug", False),
-        
         # RAGFlow 通用配置支持
         "chunk_token_num": parser_config.get("chunk_token_num", 128),
         "delimiter": parser_config.get("delimiter", "\n!?。；！？"),
-        
+        # 智能分块配置
+        "smart_chunking": parser_config.get("smart_chunking", False),
+        "preserve_code_blocks": parser_config.get("preserve_code_blocks", True),
+        "preserve_tables": parser_config.get("preserve_tables", True),
+        "maintain_hierarchy": parser_config.get("maintain_hierarchy", True),
+        "extract_images": parser_config.get("extract_images", False),
         # 自动关键词和问题提取配置
         "auto_keywords": parser_config.get("auto_keywords", 0),
         "auto_questions": parser_config.get("auto_questions", 0),
-        
         # 输出格式
         "output_format": "ragflow",
     }
@@ -266,10 +326,22 @@ def _fallback_to_plain_parser(filename, binary, from_page, to_page, lang, callba
         # 处理表格
         res = tokenize_table(tables, doc, is_english)
 
-        # 进行分块
+        # 进行分块（也支持智能分块）
         chunk_token_num = int(parser_config.get("chunk_token_num", 128))
         delimiter = parser_config.get("delimiter", "\n!?。；！？")
-        chunks = naive_merge(sections, chunk_token_num, delimiter)
+
+        # 检查是否启用智能分块
+        use_smart_chunking = parser_config.get("smart_chunking", False)
+        if use_smart_chunking:
+            try:
+                chunks = _smart_chunk_markdown_sections(sections, parser_config, filename, callback)
+                if callback:
+                    callback(0.7, "回退模式下智能分块完成")
+            except Exception as e:
+                logger.warning(f"回退模式下智能分块失败: {e}")
+                chunks = naive_merge(sections, chunk_token_num, delimiter)
+        else:
+            chunks = naive_merge(sections, chunk_token_num, delimiter)
 
         if kwargs.get("section_only", False):
             return chunks
@@ -387,7 +459,7 @@ def get_mineru_status() -> Dict[str, Any]:
         "parse_method": config["parse_method"],
         "processing_type": "PDF → Markdown → RAGFlow",
         "supported_formats": ["pdf"],
-        "features": ["高质量 PDF 转 Markdown", "结构化内容提取", "表格和图片处理", "智能分块和标记化"],
+        "features": ["高质量 PDF 转 Markdown", "结构化内容提取", "表格和图片处理", "智能/标准分块", "语义感知分块", "Markdown结构保持"],
     }
 
 
@@ -431,8 +503,18 @@ if __name__ == "__main__":
             print(f"处理类型: {status['processing_type']}")
             print()
 
-            # 测试配置
-            parser_config = {"chunk_token_num": 128, "delimiter": "\n!?。；！？", "enable_debug": True, "process_images": True, "return_content_list": True}
+            # 测试配置（启用智能分块）
+            parser_config = {
+                "chunk_token_num": 128,
+                "delimiter": "\n!?。；！？",
+                "enable_debug": True,
+                "process_images": True,
+                "return_content_list": True,
+                "smart_chunking": True,  # 启用智能分块
+                "preserve_code_blocks": True,
+                "preserve_tables": True,
+                "maintain_hierarchy": True,
+            }
 
             start_time = timer()
             result = chunk(sys.argv[1], callback=progress_callback, parser_config=parser_config, fallback_to_plain=True)
@@ -473,6 +555,12 @@ if __name__ == "__main__":
                 print(f"  {key}: {value}")
 
         print("\n📋 配置示例:")
-        example_config = {"chunk_token_num": 128, "delimiter": "\n!?。；！？", "process_images": True, "return_content_list": True, "fallback_to_plain": True}
-        for key, value in example_config.items():
-            print(f"  {key}: {value}")
+        print("  标准分块配置:")
+        standard_config = {"chunk_token_num": 128, "delimiter": "\n!?。；！？", "process_images": True, "return_content_list": True, "fallback_to_plain": True}
+        for key, value in standard_config.items():
+            print(f"    {key}: {value}")
+
+        print("\n  智能分块配置:")
+        smart_config = {"smart_chunking": True, "preserve_code_blocks": True, "preserve_tables": True, "maintain_hierarchy": True, "extract_images": False}
+        for key, value in smart_config.items():
+            print(f"    {key}: {value}")
