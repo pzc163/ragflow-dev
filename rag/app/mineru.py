@@ -147,8 +147,8 @@ def chunk(filename, binary=None, from_page=0, to_page=100000, lang="Chinese", ca
         if callback:
             callback(msg=f"MinerU 处理失败: {str(e)}")
 
-        # 检查是否启用回退机制
-        fallback_enabled = kwargs.get("fallback_to_plain", True)
+        # 检查是否启用回退机制（优先从配置中读取）
+        fallback_enabled = mineru_config.get("fallback_enabled", kwargs.get("fallback_to_plain", True))
         if fallback_enabled:
             logger.warning("回退到简单文本解析器")
             if callback:
@@ -168,20 +168,49 @@ def _get_mineru_config(parser_config: Dict[str, Any], **kwargs) -> Dict[str, Any
     """
     config = {
         # API 配置
-        "api_endpoint": (kwargs.get("mineru_endpoint") or parser_config.get("mineru_endpoint") or getattr(settings, "MINERU_ENDPOINT", "http://172.19.0.3:8081/file_parse")),
-        "api_timeout": (kwargs.get("mineru_timeout") or parser_config.get("mineru_timeout") or getattr(settings, "MINERU_TIMEOUT", 600)),
+        "api_endpoint": (
+            kwargs.get("mineru_endpoint") or 
+            parser_config.get("mineru_endpoint") or 
+            getattr(settings, "MINERU_ENDPOINT", "http://172.19.0.3:8081/file_parse")
+        ),
+        "api_timeout": (
+            kwargs.get("mineru_timeout") or 
+            parser_config.get("mineru_timeout") or 
+            getattr(settings, "MINERU_TIMEOUT", 600)
+        ),
+        
         # 解析配置
-        "parse_method": (kwargs.get("parse_method") or parser_config.get("parse_method") or getattr(settings, "MINERU_PARSE_METHOD", "auto")),
+        "parse_method": (
+            kwargs.get("parse_method") or 
+            parser_config.get("parse_method") or 
+            getattr(settings, "MINERU_PARSE_METHOD", "auto")
+        ),
+        
+        # 回退机制配置
+        "fallback_enabled": parser_config.get("mineru_fallback", True),
+        
         # 返回内容配置
         "return_layout": parser_config.get("return_layout", False),
         "return_info": parser_config.get("return_info", False),
         "return_content_list": parser_config.get("return_content_list", True),
         "return_images": parser_config.get("return_images", True),
+        
         # 图片处理配置
         "process_images": parser_config.get("process_images", True),
         "max_image_size": parser_config.get("max_image_size", (800, 800)),
+        
         # 调试配置
         "enable_debug": parser_config.get("enable_debug", False),
+        
+        # RAGFlow 通用配置支持
+        "chunk_token_num": parser_config.get("chunk_token_num", 128),
+        "delimiter": parser_config.get("delimiter", "\n!?。；！？"),
+        
+        # 自动关键词和问题提取配置
+        "auto_keywords": parser_config.get("auto_keywords", 0),
+        "auto_questions": parser_config.get("auto_questions", 0),
+        
+        # 输出格式
         "output_format": "ragflow",
     }
 
