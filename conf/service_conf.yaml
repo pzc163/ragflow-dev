@@ -14,7 +14,7 @@ minio:
   password: 'infini_rag_flow'
   host: 'localhost:9000'
 es:
-  hosts: 'http://localhost:1200'
+  hosts: 'http://localhost:9200'
   username: 'elastic'
   password: 'infini_rag_flow'
 os:
@@ -25,9 +25,13 @@ infinity:
   uri: 'localhost:23817'
   db_name: 'default_db'
 redis:
-  db: 1
+  mode: 'single' #选: single, sentinel, cluster
   password: 'infini_rag_flow'
-  host: 'localhost:6379'
+  host: 'localhost:6379'  # 单节点
+  sentinels: 'host1:26379,host2:26379,host3:26379'  # 哨兵模式用
+  master_name: 'mymaster'  # 哨兵模式用
+  cluster_nodes: '172.19.80.22:6379,172.19.80.30:6379,172.19.80.84:6379'  # 集群模式用
+  db: 1  # 可选，默认1
 
 # postgres:
 #   name: 'rag_flow'
